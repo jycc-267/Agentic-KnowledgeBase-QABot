@@ -8,6 +8,7 @@ class IndexResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
+    mode: str = "hybrid"
 
 
 class SourceInfo(BaseModel):
