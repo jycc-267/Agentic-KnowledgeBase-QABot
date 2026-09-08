@@ -4,9 +4,9 @@ This repository contains an AI-powered documentation assistant designed to answe
 
 ## Quick Start
 
-1. Set up your API key:
+1. Set up the API key:
    ```bash
-   export GEMINI_API_KEY="<Your API Key>"
+   export GEMINI_API_KEY="<API Key>"
    ```
 
 2. Start the application using `uv` (our standard project manager):
@@ -14,7 +14,7 @@ This repository contains an AI-powered documentation assistant designed to answe
    uv run uvicorn app.main:app --reload
    ```
 
-3. Open your browser to http://127.0.0.1:8000
+3. Open a browser to http://127.0.0.1:8000
 4. Click **Index Knowledge Base** to process the markdown files in the `docs/` folder.
 5. Use the chat interface to ask questions!
 
@@ -53,6 +53,46 @@ knowledge_base_qa_bot/
 ├── pyproject.toml              # Project dependencies and configurations
 └── README.md                   # Setup and usage instructions
 ```
+
+### Design Logic
+
+### 1. Which retrieval strategy is better, and why?
+- **Choice**: **Hybrid Retrieval (BM25 + Vector RAG) with Reciprocal Rank Fusion (RRF)**.
+- **Reasoning**:
+  - *Markdown KB (BM25)* is excellent at exact keyword matching and weighting rare terms (e.g., specific SKUs or names), but fails on synonyms or semantic rewrites (FM1: Keyword Miss).
+  - *Vector RAG* excels at semantic understanding and paraphrasing, but can return tangentially related content that doesn't answer the intent (FM2: Semantic False Positive).
+  - *Hybrid*: By running both and fusing their ranks (RRF), they compensate for each other's weaknesses.
+  - *Cons*: Demands an external API provider/model to calculate embeddings (cost, latency, and dependency on Google Gemini APIs), plus larger dependency profiles (binary library compilers like `faiss-cpu`).
+  - *Pros*: Vastly superior user experience, robust to query variations, and handles unstructured, natural language seamlessly.
+
+### 2. What is the retrieval unit in the design: file, section, or chunk?
+- **Choice**: **Dual Indexing with Parent-Section Mapping**.
+- **Reasoning**:
+  - *Sections* (Markdown KB) are great for providing complete context and clear citations, but can be too long and noisy for dense embeddings.
+  - *Chunks* (Vector RAG) are optimal for vector search precision but suffer from fragmented context (FM3: Wrong Retrieval Unit).
+  - *Solution*: We index sections for BM25 and chunks for FAISS. However, every chunk retains its parent section's metadata (`filename#heading-slug`). During retrieval, if a chunk hits, we resolve it back to its full parent section to feed the LLM, ensuring complete context and stable citation IDs.
+
+### 3. How to evaluate and handle Failure Modes?
+- **Logic**: We implement an offline evaluation loop tracking **Recall@K**, **MRR (Mean Reciprocal Rank)**, and **Source Hit Rate**.
+  - **FM1 (Keyword Miss)**: Solved by the semantic nature of Vector RAG.
+  - **FM2 (Semantic False Positive)**: Mitigated by BM25 relevance and score thresholding.
+  - **FM3 (Wrong Retrieval Unit)**: Solved by the "Parent-Section Mapping" described above.
+  - **FM4 (Knowledge Gap)**: Solved by enforcing strict retrieval score thresholds and an explicit LLM fallback instruction ("I cannot confirm from the knowledge base.").
+
+### 4. How to decide what goes into the prompt?
+- **Logic**:
+  - *System Instruction Block*: Enforces strict grounding, forbids hallucination, defines the fallback protocol, and establishes citation syntax.
+  - *Retrieved Context*: The top-$k$ fused and resolved parent sections. Each is prefixed with `[Source: filename#heading-slug]` to isolate sources.
+  - *User Query*: Placed at the end to maximize attention alignment.
+
+### 5. How to cite sources so users can inspect the original Markdown?
+- **Logic**: The resolved parent sections provide stable IDs (e.g., `refund_policy.md#refund-timeline`). The LLM is instructed to append these exact tags to facts. These IDs act as direct anchors to the canonical Markdown files for audit and UI deep-linking.
+
+### 6. If the knowledge base grows from 10 files to 100,000 files, what changes?
+- **Logic**:
+  - Transition from in-memory FAISS to a scalable vector DB (pgvector, Pinecone).
+  - Implement distributed ingestion (Spark, Celery) with incremental updates.
+  - Introduce a Cross-Encoder Reranker stage to handle the increased semantic noise (Semantic False Positives) at scale.
 
 ### Module Functionalities
 
