@@ -8,8 +8,8 @@ Approach:
 5. Print a full analysis report with recommended values and safety margins.
 
 Usage:
-    uv run python scripts/tune_thresholds.py
-    uv run python scripts/tune_thresholds.py --eval-set scripts/eval_set.json --k 3
+    uv run python evals/tune_thresholds.py
+    uv run python evals/tune_thresholds.py --eval-set evals/eval_set.json --k 3
 """
 
 import argparse
@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DEFAULT_EVAL_SET = PROJECT_ROOT / "scripts" / "eval_set.json"
+DEFAULT_EVAL_SET = PROJECT_ROOT / "evals" / "eval_set.json"
 
 
 # ---------------------------------------------------------------------------

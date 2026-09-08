@@ -6,8 +6,8 @@ Measures:
 - Source Hit Rate: Fraction of queries where at least one expected source appears.
 
 Usage:
-    uv run python -m scripts.run_eval
-    uv run python -m scripts.run_eval --eval-set scripts/eval_set.json --k 3
+    uv run python -m evals.run_eval
+    uv run python -m evals.run_eval --eval-set evals/eval_set.json --k 3
 """
 
 import argparse
@@ -39,7 +39,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DEFAULT_EVAL_SET = PROJECT_ROOT / "scripts" / "eval_set.json"
+DEFAULT_EVAL_SET = PROJECT_ROOT / "evals" / "eval_set.json"
 
 
 def load_eval_set(path: Path) -> list[dict]:
