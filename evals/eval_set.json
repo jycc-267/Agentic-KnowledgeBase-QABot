@@ -1,0 +1,98 @@
+[
+  {
+    "query": "How long does a refund take?",
+    "expected_sources": ["refund_policy.md#refund-timeline"],
+    "expected_behavior": "Should cite the 5-7 business days refund timeline",
+    "failure_mode": null
+  },
+  {
+    "query": "Can I get my money back for a gift card?",
+    "expected_sources": ["refund_policy.md#non-refundable-items"],
+    "expected_behavior": "Should explain digital gift cards are non-refundable",
+    "failure_mode": null
+  },
+  {
+    "query": "What is the return window for cancellations?",
+    "expected_sources": ["refund_policy.md#cancellation-window"],
+    "expected_behavior": "Should cite 24-hour cancellation window. Tests synonym handling (return vs cancellation).",
+    "failure_mode": "FM1"
+  },
+  {
+    "query": "How do I update my email?",
+    "expected_sources": ["account_help.md#change-email-address"],
+    "expected_behavior": "Should explain changing email from Account Settings",
+    "failure_mode": null
+  },
+  {
+    "query": "I forgot my password",
+    "expected_sources": ["account_help.md#reset-password"],
+    "expected_behavior": "Should explain password reset from sign-in page. Tests semantic rewrite (forgot → reset).",
+    "failure_mode": "FM1"
+  },
+  {
+    "query": "How can I remove my account permanently?",
+    "expected_sources": ["account_help.md#delete-account"],
+    "expected_behavior": "Should cite Privacy Settings and 14-day window. Tests paraphrase (remove permanently → delete).",
+    "failure_mode": "FM1"
+  },
+  {
+    "query": "How long does standard delivery take?",
+    "expected_sources": ["shipping_faq.md#standard-shipping"],
+    "expected_behavior": "Should cite 3-5 business days. Tests synonym (delivery → shipping).",
+    "failure_mode": "FM1"
+  },
+  {
+    "query": "Can I get a tracking number?",
+    "expected_sources": ["shipping_faq.md#tracking-number"],
+    "expected_behavior": "Should explain tracking number email after label creation",
+    "failure_mode": null
+  },
+  {
+    "query": "Is expedited shipping refundable after the item ships?",
+    "expected_sources": ["shipping_faq.md#expedited-shipping"],
+    "expected_behavior": "Should cite non-refundable expedited shipping fees after shipment",
+    "failure_mode": null
+  },
+  {
+    "query": "What is the meaning of life?",
+    "expected_sources": [],
+    "expected_behavior": "Should trigger fallback: out-of-scope question with no relevant KB content",
+    "failure_mode": "FM4"
+  },
+  {
+    "query": "Do you offer cryptocurrency payments?",
+    "expected_sources": [],
+    "expected_behavior": "Should trigger fallback: topic not covered in KB",
+    "failure_mode": "FM4"
+  },
+  {
+    "query": "What are personalized products in the refund policy?",
+    "expected_sources": ["refund_policy.md#non-refundable-items"],
+    "expected_behavior": "Should cite non-refundable items section mentioning personalized products",
+    "failure_mode": null
+  },
+  {
+    "query": "I want to cancel my account",
+    "expected_sources": ["account_help.md#delete-account"],
+    "expected_behavior": "Should retrieve account deletion, avoiding false positive match with order cancellation",
+    "failure_mode": "FM2"
+  },
+  {
+    "query": "I need to return my delivery",
+    "expected_sources": ["refund_policy.md#cancellation-window"],
+    "expected_behavior": "Should match the return/cancellation policy despite semantic overlap with shipping/delivery FAQ",
+    "failure_mode": "FM2"
+  },
+  {
+    "query": "How long until the link expires?",
+    "expected_sources": ["account_help.md#reset-password"],
+    "expected_behavior": "Tests if retrieving the specific chunk ('expires after 30 minutes') correctly brings the parent 'Reset Password' section context.",
+    "failure_mode": "FM3"
+  },
+  {
+    "query": "Is it 24 hours?",
+    "expected_sources": ["refund_policy.md#cancellation-window"],
+    "expected_behavior": "Tests if retrieving a highly specific chunk resolves to its parent section 'Cancellation Window' to provide full context.",
+    "failure_mode": "FM3"
+  }
+]
