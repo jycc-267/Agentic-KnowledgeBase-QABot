@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse
 from .indexer import build_index
 from .retrieval import STRATEGIES
 from .schemas import ChatRequest, ChatResponse, IndexResponse
-from scripts.run_eval import run_evaluation, DEFAULT_EVAL_SET
+from evals.run_eval import run_evaluation, DEFAULT_EVAL_SET
 
 logger = logging.getLogger(__name__)
 
