@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base Q&A</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    /* Bjork-like Minimalist Theme */
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --text-main: #1a1a1a;
+      --text-muted: #666666;
+      --border: #e0e0e0;
+      --accent: #222222;
+      --accent-hover: #444444;
+      --font-serif: 'Lora', serif;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    select, button {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 4px;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    select:focus, button:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px;
+      display: flex;
+      gap: 32px;
+    }
+
+    /* Single view vs Compare view */
+    .chat-container {
+      flex: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .compare-container {
+      display: none;
+      flex: 1;
+      width: 100%;
+      gap: 24px;
+    }
+    
+    .compare-container.active {
+      display: flex;
+    }
+
+    .eval-container {
+      display: none;
+      flex: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      flex-direction: column;
+      gap: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 40px;
+    }
+    
+    .eval-container.active {
+      display: flex;
+    }
+
+    .compare-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .compare-header {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      text-align: center;
+    }
+
+    .message {
+      padding: 20px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .message.user {
+      background: #f4f4f4;
+      border-color: transparent;
+      align-self: flex-end;
+      max-width: 80%;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .message-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .sources {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .source-item {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    
+    .source-id {
+      font-family: monospace;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .input-area {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 24px 40px;
+    }
+
+    .input-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      gap: 16px;
+    }
+
+    .input-wrapper.compare-mode {
+      max-width: 100%;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 16px 20px;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      background: var(--accent);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* Table styles for evaluation dashboard */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    td {
+      font-size: 14px;
+    }
+
+    /* Query Details */
+    .query-details-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 40px;
+    }
+    .query-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      background: var(--bg);
+    }
+    .query-card-header {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .query-card-expected {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .strategy-col {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px;
+    }
+    .strategy-col h4 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    .hit-item {
+      font-size: 12px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+    .hit-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .hit-id {
+      font-family: monospace;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .hit-score {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .hit-success {
+      color: #10b981;
+      font-weight: 600;
+    }
+    .hit-fail {
+      color: #ef4444;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 id="home-btn">Knowledge Base Q&A</h1>
+    <div class="controls">
+      <select id="mode-select">
+        <option value="hybrid">Hybrid RAG</option>
+        <option value="bm25">BM25 Only</option>
+        <option value="vector">Vector Only</option>
+      </select>
+      <button id="toggle-compare">Compare Mode: OFF</button>
+      <button id="btn-index">Rebuild Index</button>
+      <button id="btn-eval">Evaluation Dashboard</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Single Chat View -->
+    <div class="chat-container active" id="single-chat">
+      <div class="message assistant">
+        <div class="message-label">Assistant</div>
+        <div>Hello. Ask me a question about the knowledge base.</div>
+      </div>
+    </div>
+
+    <!-- Compare View -->
+    <div class="compare-container" id="compare-chat">
+      <div class="compare-column" id="col-bm25">
+        <div class="compare-header">BM25 Only</div>
+        <div class="messages"></div>
+      </div>
+      <div class="compare-column" id="col-vector">
+        <div class="compare-header">Vector Only</div>
+        <div class="messages"></div>
+      </div>
+      <div class="compare-column" id="col-hybrid">
+        <div class="compare-header">Hybrid RAG</div>
+        <div class="messages"></div>
+      </div>
+    </div>
+
+    <!-- Evaluation Dashboard -->
+    <div class="eval-container" id="eval-dashboard">
+      <div class="compare-header">Evaluation Dashboard</div>
+      <p style="text-align: center; color: var(--text-muted); font-size: 14px; margin-top: 8px;" id="eval-subtitle">
+        Run the evaluation script to compute metrics for all strategies.
+      </p>
+      
+      <div style="text-align: center; margin-top: 24px;">
+        <button class="primary" id="btn-run-eval">Run Evaluation Now</button>
+      </div>
+
+      <div id="eval-results" style="display: none;">
+        <!-- Aggregate Metrics -->
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Recall@3</th>
+              <th>MRR</th>
+              <th>Hit Rate</th>
+            </tr>
+          </thead>
+          <tbody id="eval-tbody">
+          </tbody>
+        </table>
+
+        <!-- Drilldown Details -->
+        <h3 style="margin-top: 48px; font-family: var(--font-serif); border-bottom: 1px solid var(--border); padding-bottom: 12px;">Query Drilldown</h3>
+        <div class="query-details-list" id="query-details-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="input-area" id="input-area">
+    <div class="input-wrapper" id="input-wrapper">
+      <input type="text" id="query-input" placeholder="Enter your question..." autocomplete="off">
+      <button class="primary" id="btn-send">Ask</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let isCompareMode = false;
+    let isEvalMode = false;
+    const modeSelect = document.getElementById('mode-select');
+    const toggleCompareBtn = document.getElementById('toggle-compare');
+    const btnIndex = document.getElementById('btn-index');
+    const btnEval = document.getElementById('btn-eval');
+    const btnSend = document.getElementById('btn-send');
+    const queryInput = document.getElementById('query-input');
+    const homeBtn = document.getElementById('home-btn');
+    const btnRunEval = document.getElementById('btn-run-eval');
+    
+    const singleChat = document.getElementById('single-chat');
+    const compareChat = document.getElementById('compare-chat');
+    const evalDashboard = document.getElementById('eval-dashboard');
+    const inputArea = document.getElementById('input-area');
+    const inputWrapper = document.getElementById('input-wrapper');
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function resetViews() {
+      singleChat.classList.remove('active');
+      singleChat.style.display = 'none';
+      compareChat.classList.remove('active');
+      evalDashboard.classList.remove('active');
+      inputArea.style.display = 'block';
+    }
+
+    homeBtn.addEventListener('click', () => {
+      isEvalMode = false;
+      isCompareMode = false;
+      toggleCompareBtn.textContent = 'Compare Mode: OFF';
+      modeSelect.disabled = false;
+      resetViews();
+      singleChat.classList.add('active');
+      singleChat.style.display = 'flex';
+      inputWrapper.classList.remove('compare-mode');
+    });
+
+    btnEval.addEventListener('click', () => {
+      isEvalMode = true;
+      resetViews();
+      evalDashboard.classList.add('active');
+      inputArea.style.display = 'none';
+    });
+
+    toggleCompareBtn.addEventListener('click', () => {
+      isEvalMode = false;
+      isCompareMode = !isCompareMode;
+      toggleCompareBtn.textContent = `Compare Mode: ${isCompareMode ? 'ON' : 'OFF'}`;
+      modeSelect.disabled = isCompareMode;
+      
+      resetViews();
+      
+      if (isCompareMode) {
+        compareChat.classList.add('active');
+        inputWrapper.classList.add('compare-mode');
+      } else {
+        singleChat.classList.add('active');
+        singleChat.style.display = 'flex';
+        inputWrapper.classList.remove('compare-mode');
+      }
+    });
+
+    btnRunEval.addEventListener('click', async () => {
+      btnRunEval.disabled = true;
+      btnRunEval.textContent = 'Running Evaluation (this may take a minute)...';
+      document.getElementById('eval-results').style.display = 'none';
+      
+      try {
+        const res = await fetch('/evaluate');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('eval-subtitle').textContent = `Evaluated ${data.num_queries} queries (Top-K: ${data.k})`;
+          
+          const tbody = document.getElementById('eval-tbody');
+          tbody.innerHTML = '';
+          
+          for (const [strategy, stats] of Object.entries(data.strategies)) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><strong>${strategy}</strong></td>
+              <td>${stats.recall_at_k.toFixed(4)}</td>
+              <td>${stats.mrr.toFixed(4)}</td>
+              <td>${stats.source_hit_rate.toFixed(4)}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+
+          // Build Query Details
+          const qList = document.getElementById('query-details-list');
+          qList.innerHTML = '';
+
+          // We assume all strategies run the exact same queries in the same order.
+          // Grab the queries from the first strategy (e.g. BM25).
+          const firstStrategy = Object.keys(data.strategies)[0];
+          const numQueries = data.strategies[firstStrategy].details.length;
+
+          for (let i = 0; i < numQueries; i++) {
+            const queryData = data.strategies[firstStrategy].details[i];
+            
+            const card = document.createElement('div');
+            card.className = 'query-card';
+
+            const expectedList = queryData.expected_sources.length 
+              ? queryData.expected_sources.join(', ')
+              : 'None (Fallback Expected)';
+
+            let cardHTML = `
+              <div class="query-card-header">Q: ${queryData.query}</div>
+              <div class="query-card-expected"><strong>Expected:</strong> ${expectedList}</div>
+              <div class="strategy-grid">
+            `;
+
+            // Now loop through each strategy to get its hits for this specific query
+            for (const strategy of Object.keys(data.strategies)) {
+              const stratDetails = data.strategies[strategy].details[i];
+              
+              let hitHtml = '';
+              stratDetails.retrieved_details.forEach(hit => {
+                const isExpected = queryData.expected_sources.includes(hit.section_id);
+                // If expected_sources is empty, nothing is 'expected' in the retrieved list
+                const colorClass = isExpected ? 'hit-success' : (queryData.expected_sources.length ? 'hit-fail' : '');
+                
+                hitHtml += `
+                  <div class="hit-item">
+                    <span class="hit-id ${colorClass}">${hit.section_id}</span>
+                    <span style="font-weight: 500;">${hit.heading}</span><br>
+                    <span class="hit-score">Score: ${hit.score}</span>
+                  </div>
+                `;
+              });
+
+              if (!hitHtml) {
+                hitHtml = '<div class="hit-item" style="color:var(--text-muted)">No hits retrieved</div>';
+              }
+
+              cardHTML += `
+                <div class="strategy-col">
+                  <h4>${strategy}</h4>
+                  ${hitHtml}
+                </div>
+              `;
+            }
+
+            cardHTML += `</div>`; // end strategy-grid
+            card.innerHTML = cardHTML;
+            qList.appendChild(card);
+          }
+          
+          document.getElementById('eval-results').style.display = 'block';
+          showToast('Evaluation complete!');
+        } else {
+          showToast('Failed to run evaluation.');
+        }
+      } catch (err) {
+        showToast('Error running evaluation.');
+        console.error(err);
+      }
+      btnRunEval.disabled = false;
+      btnRunEval.textContent = 'Run Evaluation Again';
+    });
+
+    btnIndex.addEventListener('click', async () => {
+      btnIndex.disabled = true;
+      btnIndex.textContent = 'Indexing...';
+      try {
+        const res = await fetch('/index', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          showToast(`Index built: ${data.files_indexed} files`);
+        } else {
+          showToast('Failed to build index.');
+        }
+      } catch (err) {
+        showToast('Error building index.');
+      }
+      btnIndex.disabled = false;
+      btnIndex.textContent = 'Rebuild Index';
+    });
+
+    function createMessageEl(role, content, sources = []) {
+      const el = document.createElement('div');
+      el.className = `message ${role}`;
+      let html = `<div class="message-label">${role === 'user' ? 'You' : 'Assistant'}</div>`;
+      html += `<div>${content.replace(/\\n/g, '<br>')}</div>`;
+      
+      if (sources.length > 0) {
+        html += `<div class="sources">`;
+        sources.forEach(s => {
+          html += `<div class="source-item">
+            <span class="source-id">[${s.source}#${s.heading}]</span> 
+            Score: ${s.score.toFixed(4)}
+          </div>`;
+        });
+        html += `</div>`;
+      }
+      el.innerHTML = html;
+      return el;
+    }
+
+    async function fetchAnswer(query, mode, container) {
+      const loadingEl = createMessageEl('assistant', 'Thinking...');
+      container.appendChild(loadingEl);
+      container.parentElement.scrollTop = container.parentElement.scrollHeight;
+      
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, mode })
+        });
+        
+        loadingEl.remove();
+        if (res.ok) {
+          const data = await res.json();
+          container.appendChild(createMessageEl('assistant', data.answer, data.sources));
+        } else {
+          container.appendChild(createMessageEl('assistant', 'Error fetching response.'));
+        }
+      } catch (err) {
+        loadingEl.remove();
+        container.appendChild(createMessageEl('assistant', 'Network error.'));
+      }
+      container.parentElement.scrollTop = container.parentElement.scrollHeight;
+    }
+
+    async function handleSend() {
+      const query = queryInput.value.trim();
+      if (!query) return;
+      
+      queryInput.value = '';
+      btnSend.disabled = true;
+
+      if (!isCompareMode) {
+        singleChat.appendChild(createMessageEl('user', query));
+        await fetchAnswer(query, modeSelect.value, singleChat);
+      } else {
+        const cols = {
+          bm25: document.querySelector('#col-bm25 .messages'),
+          vector: document.querySelector('#col-vector .messages'),
+          hybrid: document.querySelector('#col-hybrid .messages')
+        };
+        
+        cols.bm25.appendChild(createMessageEl('user', query));
+        cols.vector.appendChild(createMessageEl('user', query));
+        cols.hybrid.appendChild(createMessageEl('user', query));
+        
+        await Promise.all([
+          fetchAnswer(query, 'bm25', cols.bm25),
+          fetchAnswer(query, 'vector', cols.vector),
+          fetchAnswer(query, 'hybrid', cols.hybrid)
+        ]);
+      }
+      
+      btnSend.disabled = false;
+      queryInput.focus();
+    }
+
+    btnSend.addEventListener('click', handleSend);
+    queryInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSend();
+    });
+  </script>
+</body>
+</html>
