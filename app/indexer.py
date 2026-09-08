@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
 
 from langchain_core.documents import Document
@@ -314,6 +315,10 @@ def _load_bm25_sections(bm25_dir: Path = BM25_INDEX_DIR) -> None:
 # Search helpers (used by retrieval.py)
 # ---------------------------------------------------------------------------
 
+FAISS_MAX_RETRIES = 3
+FAISS_BASE_DELAY = 1.0  # seconds
+
+
 def search_faiss(query: str, k: int = 5) -> list[tuple[Document, float]]:
     """Semantic search via FAISS.  Returns (chunk_doc, distance) pairs.
     
@@ -321,10 +326,35 @@ def search_faiss(query: str, k: int = 5) -> list[tuple[Document, float]]:
     
     Why: Catches conceptual matches even if the exact keywords differ (e.g., "refund" 
     matching "money back"). Distance scores represent semantic similarity.
+    
+    Retry: The Gemini Embedding API enforces rate limits (429). On transient
+    ResourceExhausted errors, retries up to FAISS_MAX_RETRIES times with
+    exponential backoff (1s, 2s, 4s) before giving up.
     """
     if vectorstore is None:
         return []
-    return vectorstore.similarity_search_with_score(query, k=k)
+
+    last_error: Exception | None = None
+    for attempt in range(FAISS_MAX_RETRIES + 1):
+        try:
+            return vectorstore.similarity_search_with_score(query, k=k)
+        except Exception as exc:
+            error_str = str(exc).lower()
+            is_rate_limit = "429" in error_str or "resource exhausted" in error_str
+            if not is_rate_limit or attempt >= FAISS_MAX_RETRIES:
+                raise
+            last_error = exc
+            delay = FAISS_BASE_DELAY * (2 ** attempt)
+            logger.warning(
+                "Embedding API rate-limited (attempt %d/%d), retrying in %.1fs...",
+                attempt + 1, FAISS_MAX_RETRIES, delay,
+            )
+            time.sleep(delay)
+
+    # Should not reach here, but satisfy type checker
+    if last_error:
+        raise last_error
+    return []
 
 
 def search_bm25(query: str, k: int = 5) -> list[tuple[Document, float]]:
