@@ -4,9 +4,9 @@ This repository contains an AI-powered documentation assistant designed to answe
 
 ## Quick Start
 
-1. Set up your Google Gemini API key:
+1. Set up the API key:
    ```bash
-   export GEMINI_API_KEY="AIzaSy..."
+   export GEMINI_API_KEY="<API Key>"
    ```
 
 2. Start the application using `uv` (our standard project manager):
@@ -14,7 +14,7 @@ This repository contains an AI-powered documentation assistant designed to answe
    uv run uvicorn app.main:app --reload
    ```
 
-3. Open your browser to http://127.0.0.1:8000
+3. Open a browser to http://127.0.0.1:8000
 4. Click **Index Knowledge Base** to process the markdown files in the `docs/` folder.
 5. Use the chat interface to ask questions!
 
@@ -53,6 +53,46 @@ knowledge_base_qa_bot/
 ├── pyproject.toml              # Project dependencies and configurations
 └── README.md                   # Setup and usage instructions
 ```
+
+### Design Logic
+
+### 1. Which retrieval strategy is better, and why?
+- **Choice**: **Hybrid Retrieval (BM25 + Vector RAG) with Reciprocal Rank Fusion (RRF)**.
+- **Reasoning**:
+  - *Markdown KB (BM25)* is excellent at exact keyword matching and weighting rare terms (e.g., specific SKUs or names), but fails on synonyms or semantic rewrites (FM1: Keyword Miss).
+  - *Vector RAG* excels at semantic understanding and paraphrasing, but can return tangentially related content that doesn't answer the intent (FM2: Semantic False Positive).
+  - *Hybrid*: By running both and fusing their ranks (RRF), they compensate for each other's weaknesses.
+  - *Cons*: Demands an external API provider/model to calculate embeddings (cost, latency, and dependency on Google Gemini APIs), plus larger dependency profiles (binary library compilers like `faiss-cpu`).
+  - *Pros*: Vastly superior user experience, robust to query variations, and handles unstructured, natural language seamlessly.
+
+### 2. What is the retrieval unit in the design: file, section, or chunk?
+- **Choice**: **Dual Indexing with Parent-Section Mapping**.
+- **Reasoning**:
+  - *Sections* (Markdown KB) are great for providing complete context and clear citations, but can be too long and noisy for dense embeddings.
+  - *Chunks* (Vector RAG) are optimal for vector search precision but suffer from fragmented context (FM3: Wrong Retrieval Unit).
+  - *Solution*: We index sections for BM25 and chunks for FAISS. However, every chunk retains its parent section's metadata (`filename#heading-slug`). During retrieval, if a chunk hits, we resolve it back to its full parent section to feed the LLM, ensuring complete context and stable citation IDs.
+
+### 3. How to evaluate and handle Failure Modes?
+- **Logic**: We implement an offline evaluation loop tracking **Recall@K**, **MRR (Mean Reciprocal Rank)**, and **Source Hit Rate**.
+  - **FM1 (Keyword Miss)**: Solved by the semantic nature of Vector RAG.
+  - **FM2 (Semantic False Positive)**: Mitigated by BM25 relevance and score thresholding.
+  - **FM3 (Wrong Retrieval Unit)**: Solved by the "Parent-Section Mapping" described above.
+  - **FM4 (Knowledge Gap)**: Solved by enforcing strict retrieval score thresholds and an explicit LLM fallback instruction ("I cannot confirm from the knowledge base.").
+
+### 4. How to decide what goes into the prompt?
+- **Logic**:
+  - *System Instruction Block*: Enforces strict grounding, forbids hallucination, defines the fallback protocol, and establishes citation syntax.
+  - *Retrieved Context*: The top-$k$ fused and resolved parent sections. Each is prefixed with `[Source: filename#heading-slug]` to isolate sources.
+  - *User Query*: Placed at the end to maximize attention alignment.
+
+### 5. How to cite sources so users can inspect the original Markdown?
+- **Logic**: The resolved parent sections provide stable IDs (e.g., `refund_policy.md#refund-timeline`). The LLM is instructed to append these exact tags to facts. These IDs act as direct anchors to the canonical Markdown files for audit and UI deep-linking.
+
+### 6. If the knowledge base grows from 10 files to 100,000 files, what changes?
+- **Logic**:
+  - Transition from in-memory FAISS to a scalable vector DB (pgvector, Pinecone).
+  - Implement distributed ingestion (Spark, Celery) with incremental updates.
+  - Introduce a Cross-Encoder Reranker stage to handle the increased semantic noise (Semantic False Positives) at scale.
 
 ### Module Functionalities
 
@@ -148,3 +188,66 @@ sequenceDiagram
 3. **Parent-Section Resolution**: Vector search inherently retrieves small chunks that lack context. The architecture enforces that every retrieved chunk is resolved back to its full parent markdown section *before* being fed to the LLM.
 4. **Strategy Segregation**: Retrieval strategies are fully isolated into their own modules (`bm25`, `vector`, `hybrid`), allowing the UI and evaluation scripts to cleanly compare their performance without coupled logic.
 5. **Resilience**: Downstream integrations (like Google GenAI Embeddings) are wrapped in exponential backoff retry logic to handle transient issues like rate limits gracefully.
+
+
+## Future Goals
+
+### Streaming Interface
+
+```text
+POST /chat/stream
+```
+
+Use SSE to stream the answer token by token. A good streaming response should:
+
+- Return selected sources first, so users can see what context the bot is using
+- Stream answer tokens as they arrive
+- End with a clear `done` event
+- Preserve the same grounding and citation rules as `/chat`
+
+Optional UI challenge: build a tiny HTML page that calls `/chat/stream` and renders the answer incrementally. Show selected sources before the answer so users can inspect grounding.
+
+### Multi-Format Import
+
+Add a small normalization pipeline before indexing:
+
+```text
+raw/*.txt or raw/*.html -> docs/*.md -> POST /index -> retrieval index
+```
+
+Requirements:
+
+- Keep Markdown as the canonical knowledge format
+- Preserve the original source filename
+- Convert headings into Markdown headings
+- Rebuild the retrieval index after import
+
+Start with `.txt` or `.html`. More complex formats such as PDFs, spreadsheets, and transcripts can be discussed as production extensions.
+
+### Alternative Interfaces
+
+Expose the same retrieval core through another interface:
+
+```text
+CLI: kb index / kb ask
+MCP: expose index, search, and chat as agent tools
+Web UI: simple chat screen over /chat or /chat/stream
+```
+
+The goal is to compare interface tradeoffs, not to change the retrieval design.
+
+### Wiki Index Generation
+
+Generate `wiki/index.md` from `.kb/index.json` so humans and agents can browse the available topics.
+
+### Answer Filing
+
+Write useful Q&A results back into `wiki/` after review. Preserve citations back to the source Markdown sections.
+
+### Conversation Memory
+
+Add short conversation memory for follow-up questions. Memory can help interpret the query, but retrieved sources must still control the final answer.
+
+### Paraphrase Comparison
+
+Create paraphrased queries and compare Markdown KB vs Vector RAG. Look for synonym misses, semantic false positives, and citation quality.
