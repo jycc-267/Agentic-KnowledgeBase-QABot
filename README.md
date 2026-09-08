@@ -4,9 +4,9 @@ This repository contains an AI-powered documentation assistant designed to answe
 
 ## Quick Start
 
-1. Set up your Google Gemini API key:
+1. Set up your API key:
    ```bash
-   export GEMINI_API_KEY="AIzaSy..."
+   export GEMINI_API_KEY="<Your API Key>"
    ```
 
 2. Start the application using `uv` (our standard project manager):
@@ -148,3 +148,66 @@ sequenceDiagram
 3. **Parent-Section Resolution**: Vector search inherently retrieves small chunks that lack context. The architecture enforces that every retrieved chunk is resolved back to its full parent markdown section *before* being fed to the LLM.
 4. **Strategy Segregation**: Retrieval strategies are fully isolated into their own modules (`bm25`, `vector`, `hybrid`), allowing the UI and evaluation scripts to cleanly compare their performance without coupled logic.
 5. **Resilience**: Downstream integrations (like Google GenAI Embeddings) are wrapped in exponential backoff retry logic to handle transient issues like rate limits gracefully.
+
+
+## Future Goals
+
+### Streaming Interface
+
+```text
+POST /chat/stream
+```
+
+Use SSE to stream the answer token by token. A good streaming response should:
+
+- Return selected sources first, so users can see what context the bot is using
+- Stream answer tokens as they arrive
+- End with a clear `done` event
+- Preserve the same grounding and citation rules as `/chat`
+
+Optional UI challenge: build a tiny HTML page that calls `/chat/stream` and renders the answer incrementally. Show selected sources before the answer so users can inspect grounding.
+
+### Multi-Format Import
+
+Add a small normalization pipeline before indexing:
+
+```text
+raw/*.txt or raw/*.html -> docs/*.md -> POST /index -> retrieval index
+```
+
+Requirements:
+
+- Keep Markdown as the canonical knowledge format
+- Preserve the original source filename
+- Convert headings into Markdown headings
+- Rebuild the retrieval index after import
+
+Start with `.txt` or `.html`. More complex formats such as PDFs, spreadsheets, and transcripts can be discussed as production extensions.
+
+### Alternative Interfaces
+
+Expose the same retrieval core through another interface:
+
+```text
+CLI: kb index / kb ask
+MCP: expose index, search, and chat as agent tools
+Web UI: simple chat screen over /chat or /chat/stream
+```
+
+The goal is to compare interface tradeoffs, not to change the retrieval design.
+
+### Wiki Index Generation
+
+Generate `wiki/index.md` from `.kb/index.json` so humans and agents can browse the available topics.
+
+### Answer Filing
+
+Write useful Q&A results back into `wiki/` after review. Preserve citations back to the source Markdown sections.
+
+### Conversation Memory
+
+Add short conversation memory for follow-up questions. Memory can help interpret the query, but retrieved sources must still control the final answer.
+
+### Paraphrase Comparison
+
+Create paraphrased queries and compare Markdown KB vs Vector RAG. Look for synonym misses, semantic false positives, and citation quality.
