@@ -22,6 +22,7 @@ GEMINI.md
 
 # context files
 contexts/
+artifacts/
 
 chatgpt_task.db
 chatgpt_task.db-shm
